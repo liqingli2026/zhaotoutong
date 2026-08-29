@@ -7,8 +7,8 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <title>招投通</title>
-    <script type="module" crossorigin src="./assets/index-BIgevjwD.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-66843WrK.css">
+    <script type="module" crossorigin src="./assets/index-CJNKW6f5.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-utBQm_dP.css">
   </head>
   <body>
     <div id="app">
@@ -18,6 +18,9 @@
           <h1 class="topbar-title">招投通</h1>
           <div class="topbar-sub" id="statLine">加载中…</div>
         </div>
+        <button id="shortlistBtn" class="shortlist-btn" type="button">
+          <span class="sl-btn-icon">★</span>可投标 <span id="shortlistCount" class="sl-badge">0</span>
+        </button>
       </header>
 
       <section class="filters">
@@ -50,6 +53,15 @@
         <span id="connState">未连接</span>
         <a id="debugToggle" href="?debug=1">调试</a>
       </footer>
+
+      <div id="shortlistOverlay" class="sl-overlay"></div>
+      <aside id="shortlistPanel" class="sl-panel" aria-hidden="true">
+        <div class="sl-head">
+          <span class="sl-head-title">可投标清单</span>
+          <button id="shortlistClose" class="sl-close" type="button" aria-label="关闭">×</button>
+        </div>
+        <div id="shortlistItems" class="sl-items"></div>
+      </aside>
     </div>
   </body>
 </html>
