@@ -6,29 +6,37 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <title>招投通 · 招标信息</title>
-    <script type="module" crossorigin src="./assets/index-qmqzEw8n.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CyCiEmnD.css">
+    <title>招投通</title>
+    <script type="module" crossorigin src="./assets/index-saSQK7Ck.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-eE-zL0Ba.css">
   </head>
   <body>
     <div id="app">
       <header class="topbar">
-        <div class="topbar-title">招投通</div>
+        <h1 class="topbar-title">招投通</h1>
         <div class="topbar-sub" id="statLine">加载中…</div>
       </header>
 
       <section class="filters">
-        <div class="filter-row" id="bizFilter">
-          <button class="chip chip-active" data-biz="all">全部</button>
-          <button class="chip" data-biz="device">设备类</button>
-          <button class="chip" data-biz="engineering">工程类</button>
+        <div class="filter-scroll">
+          <div class="filter-row" id="catFilter">
+            <button class="chip chip-active" data-cat="all">全部</button>
+          </div>
         </div>
-        <div class="filter-row" id="srcFilter">
-          <button class="chip chip-active" data-src="all">全部来源</button>
-          <button class="chip" data-src="central">国网/中央</button>
-          <button class="chip" data-src="local">地方</button>
+
+        <div class="sub-filters">
+          <div class="filter-row" id="bizFilter">
+            <button class="chip chip-active" data-biz="all">全部</button>
+            <button class="chip" data-biz="device">设备类</button>
+            <button class="chip" data-biz="engineering">工程类</button>
+          </div>
+          <div class="filter-row" id="srcFilter">
+            <button class="chip chip-active" data-src="all">全部</button>
+            <button class="chip" data-src="central">国网/中央</button>
+            <button class="chip" data-src="local">地方</button>
+          </div>
         </div>
-        <div class="filter-row" id="catFilter"></div>
+
         <div class="search-row">
           <input id="searchInput" type="search" placeholder="搜索标题 / 来源 / 关键词" />
         </div>
@@ -38,11 +46,11 @@
 
       <div id="loadMore" class="load-more">加载更多</div>
       <div id="loading" class="loading">正在连接云数据库…</div>
-      <div id="empty" class="empty hidden">没有符合条件的信息</div>
+      <div id="empty" class="empty hidden">暂无相关招标信息</div>
 
       <footer class="foot">
         <span id="connState">未连接</span>
-        <a id="debugToggle" href="?debug=1">调试字段</a>
+        <a id="debugToggle" href="?debug=1">调试</a>
       </footer>
     </div>
   </body>
