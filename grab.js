@@ -108,6 +108,48 @@
     });
   }
 
+  function extractViewerText(viewerUrl, onDone, onErr){
+    var iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:none;';
+    iframe.src = viewerUrl;
+    document.body.appendChild(iframe);
+    var tries = 0;
+    var timer = setInterval(function(){
+      try {
+        var win = iframe.contentWindow;
+        var app = win.PDFViewerApplication;
+        if(app && app.pdfDocument && app.pagesLoaded){
+          clearInterval(timer);
+          var pdf = app.pdfDocument;
+          var pages = [];
+          for(var i=1; i<=pdf.numPages; i++) pages.push(i);
+          Promise.all(pages.map(function(pi){
+            return pdf.getPage(pi).then(function(page){
+              return page.getTextContent().then(function(tc){
+                var strs = [];
+                tc.items.forEach(function(it){ strs.push(it.str); if(it.hasEOL) strs.push('\n'); });
+                return {n: page.pageNumber, t: strs.join('')};
+              });
+            });
+          })).then(function(results){
+            results.sort(function(a,b){ return a.n - b.n; });
+            var full = [];
+            results.forEach(function(r){ full.push('【第' + r.n + '页】\n' + r.t); });
+            onDone(full.join('\n\n'));
+            try { document.body.removeChild(iframe); } catch(e){}
+          }).catch(function(e){ onErr(e.message || '提取失败'); });
+          return;
+        }
+      } catch(e){}
+      tries++;
+      if(tries > 90){
+        clearInterval(timer);
+        onErr('PDF 加载超时，可能是链接需要登录态');
+        try { document.body.removeChild(iframe); } catch(e){}
+      }
+    }, 1000);
+  }
+
   document.getElementById('__grabX').onclick = function(){ box.parentNode.removeChild(box); };
   document.getElementById('__grabDeep').onclick = function(){
     var candidates = deepScan();
@@ -120,11 +162,38 @@
       deepBox.innerHTML = '<b style="color:#888">🔍 深度扫描结果</b><div style="color:#999;font-size:12px;margin-top:6px">没扫到可疑 PDF 链接。<br>如果页面有下载按钮，点下载后复制新标签页的 PDF 地址，手动贴到：<br><a href="https://zhaotoutong.chzfd.com/pdf.html" target="_blank" rel="noopener">https://zhaotoutong.chzfd.com/pdf.html</a></div>';
       return;
     }
-    var html = '<b style="color:#e0533a">🔍 深度扫描结果</b><div style="color:#666;font-size:12px;margin:4px 0 6px">以下是从 iframe / data-* / 脚本里扫到的可疑链接，点「提取文字」试试：</div>';
+    var html = '<b style="color:#e0533a">🔍 深度扫描结果</b><div style="color:#666;font-size:12px;margin:4px 0 6px">以下是从 iframe / data-* / 脚本里扫到的可疑链接：</div>';
     candidates.forEach(function(u){
-      html += '<div style="margin-top:8px"><a href="https://zhaotoutong.chzfd.com/pdf.html?url=' + encodeURIComponent(u) + '" target="_blank" rel="noopener" style="display:inline-block;padding:7px 10px;background:#e0533a;color:#fff;border-radius:6px;text-decoration:none;font-size:13px">📄 提取文字</a><a href="' + u.replace(/"/g,'&quot;') + '" target="_blank" rel="noopener" style="display:inline-block;margin-left:6px;padding:7px 10px;background:#f0f0f0;color:#333;border-radius:6px;text-decoration:none;font-size:13px">直接打开</a><div style="color:#999;font-size:11px;word-break:break-all;margin-top:2px">' + u + '</div></div>';
+      var isSameViewer = false;
+      try { isSameViewer = (u.indexOf('/pdfjs-dist/web/viewer.html') !== -1 || u.indexOf('/web/viewer.html') !== -1) && u.indexOf('?file=') !== -1 && u.indexOf(location.origin) === 0; } catch(e){}
+      if(isSameViewer){
+        html += '<div style="margin-top:8px"><button data-vu="' + u.replace(/"/g,'&quot;') + '" class="__grabViewBtn" style="padding:7px 10px;background:#e0533a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">📄 在当前页提取 PDF 文字</button><a href="' + u.replace(/"/g,'&quot;') + '" target="_blank" rel="noopener" style="display:inline-block;margin-left:6px;padding:7px 10px;background:#f0f0f0;color:#333;border-radius:6px;text-decoration:none;font-size:13px">打开查看器</a><div style="color:#999;font-size:11px;word-break:break-all;margin-top:2px">' + u + '</div></div>';
+      } else {
+        html += '<div style="margin-top:8px"><a href="https://zhaotoutong.chzfd.com/pdf.html?url=' + encodeURIComponent(u) + '" target="_blank" rel="noopener" style="display:inline-block;padding:7px 10px;background:#e0533a;color:#fff;border-radius:6px;text-decoration:none;font-size:13px">📄 提取文字</a><a href="' + u.replace(/"/g,'&quot;') + '" target="_blank" rel="noopener" style="display:inline-block;margin-left:6px;padding:7px 10px;background:#f0f0f0;color:#333;border-radius:6px;text-decoration:none;font-size:13px">直接打开</a><div style="color:#999;font-size:11px;word-break:break-all;margin-top:2px">' + u + '</div></div>';
+      }
     });
+    html += '<div id="__grabViewRes" style="margin-top:10px"></div>';
     deepBox.innerHTML = html;
+    Array.prototype.forEach.call(deepBox.querySelectorAll('.__grabViewBtn'), function(btn){
+      btn.onclick = function(){
+        var vu = btn.getAttribute('data-vu');
+        var resBox = document.getElementById('__grabViewRes');
+        resBox.innerHTML = '<div style="color:#e0533a;font-size:13px">正在后台加载 PDF 并提取文字，请稍候…</div>';
+        extractViewerText(vu, function(text){
+          resBox.innerHTML = '<div style="margin-bottom:6px"><b style="color:#e0533a">提取成功</b> <button id="__grabCpTxt" style="padding:4px 10px;background:#e0533a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">复制全部</button></div><textarea id="__grabResTa" style="width:100%;height:220px;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:13px;white-space:pre-wrap;word-break:break-all">' + text.replace(/</g,'&lt;').replace(/&/g,'&amp;') + '</textarea>';
+          document.getElementById('__grabCpTxt').onclick = function(){
+            var ta = document.getElementById('__grabResTa');
+            if(navigator.clipboard && navigator.clipboard.writeText){
+              navigator.clipboard.writeText(ta.value).then(function(){ alert('已复制'); });
+            } else {
+              ta.select(); document.execCommand('copy'); alert('已复制');
+            }
+          };
+        }, function(err){
+          resBox.innerHTML = '<div style="color:#c0392b;font-size:13px">提取失败：' + err + '<br>可点「打开查看器」手动用文本选择工具复制。</div>';
+        });
+      };
+    });
   };
   document.getElementById('__grabCopy').onclick = function(){
     var s = lines.join('\n');
