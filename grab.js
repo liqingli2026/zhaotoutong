@@ -109,16 +109,27 @@
   }
 
   function extractViewerText(viewerUrl, onDone, onErr){
-    var iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:none;';
-    iframe.src = viewerUrl;
-    document.body.appendChild(iframe);
+    var existing = null;
+    Array.prototype.forEach.call(document.querySelectorAll('iframe,embed,object'), function(el){
+      var s = el.src || el.data || '';
+      if(s && s.indexOf('/web/viewer.html') !== -1 && s.indexOf('?file=') !== -1 && s.indexOf(location.origin) === 0){
+        existing = el;
+      }
+    });
+    var iframe = existing;
+    if(!iframe){
+      iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:none;';
+      iframe.src = viewerUrl;
+      document.body.appendChild(iframe);
+    }
     var tries = 0;
     var timer = setInterval(function(){
       try {
-        var win = iframe.contentWindow;
+        var win = iframe.contentWindow || iframe.contentDocument.defaultView;
+        if(!win) throw new Error('no win');
         var app = win.PDFViewerApplication;
-        if(app && app.pdfDocument && app.pagesLoaded){
+        if(app && app.pdfDocument && app.pdfDocument.numPages){
           clearInterval(timer);
           var pdf = app.pdfDocument;
           var pages = [];
@@ -136,16 +147,16 @@
             var full = [];
             results.forEach(function(r){ full.push('【第' + r.n + '页】\n' + r.t); });
             onDone(full.join('\n\n'));
-            try { document.body.removeChild(iframe); } catch(e){}
+            if(!existing) try { document.body.removeChild(iframe); } catch(e){}
           }).catch(function(e){ onErr(e.message || '提取失败'); });
           return;
         }
       } catch(e){}
       tries++;
-      if(tries > 90){
+      if(tries > 60){
         clearInterval(timer);
         onErr('PDF 加载超时，可能是链接需要登录态');
-        try { document.body.removeChild(iframe); } catch(e){}
+        if(!existing) try { document.body.removeChild(iframe); } catch(e){}
       }
     }, 1000);
   }
