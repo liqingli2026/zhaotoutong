@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>抓取招标信息 · 书签生成器</title>
+<style>
+  body{max-width:680px;margin:40px auto;font:15px/1.7 -apple-system,"Microsoft YaHei",sans-serif;color:#222;padding:0 20px}
+  h1{color:#e0533a}
+  .box{border:2px dashed #e0533a;border-radius:12px;padding:24px;text-align:center;background:#fff7f5;margin:24px 0}
+  a#bm{display:inline-block;padding:14px 22px;background:#e0533a;color:#fff;border-radius:8px;font-size:17px;font-weight:bold;text-decoration:none;cursor:grab;user-select:none}
+  code{background:#f3f3f3;padding:2px 6px;border-radius:4px}
+</style>
+</head>
+<body>
+  <h1>一劳永逸：禁复制招标页 · 一键抓取书签</h1>
+  <p>把下面的橙色按钮<b>拖到浏览器书签栏</b>（就是地址栏下面那一排）。以后在任意禁复制的招标页面，<b>点一下这个书签</b>就会：</p>
+  <ul>
+    <li>解除该页的复制/选中/右键限制；</li>
+    <li>弹出一个浮窗，提取<b>网页标题、当前网址、疑似发布时间、页面里出现的所有网址</b>；</li>
+    <li>点「一键复制全部」即可粘到微信/百度/招投通去查。</li>
+  </ul>
+  <div class="box">
+    <a id="bm" href="#">📋 抓取招标信息（拖我到书签栏）</a>
+    <p style="margin-top:14px;color:#888;font-size:13px">若看不到书签栏：Chrome 按 <code>Ctrl+Shift+B</code> 显示。</p>
+  </div>
+  <p style="color:#888;font-size:13px">如果误删了书签，重新打开本页面再拖一次即可。</p>
+
+<script>
+var code = [
+"(function(){",
+"  function unlock(){",
+"    document.onselectstart=document.oncopy=document.oncontextmenu=document.onmousedown=document.onmouseup=null;",
+"    document.body.style.userSelect='text';document.body.style.webkitUserSelect='text';",
+"    Array.prototype.forEach.call(document.querySelectorAll('*'),function(el){el.style.userSelect='text';el.style.webkitUserSelect='text';el.style.pointerEvents='auto';});",
+"  }",
+"  unlock();",
+"  var seen={},urls=[];",
+"  Array.prototype.forEach.call(document.querySelectorAll('a[href]'),function(a){var h=a.href||'';if(h&&h.indexOf('javascript:')!==0&&h.indexOf('#')!==0&&!seen[h]){seen[h]=1;urls.push(h);}});",
+"  urls=urls.slice(0,40);",
+"  var lines=[];lines.push('【网页标题】'+document.title);lines.push('【当前网址】'+location.href);",
+"  var timeTxt='';Array.prototype.forEach.call(document.querySelectorAll('*'),function(el){if(timeTxt)return;var m=(el.innerText||'').match(/(\\d{4}年\\d{1,2}月\\d{1,2}日|\\d{4}-\\d{1,2}-\\d{1,2}|\\d{4}\\/\\d{1,2}\\/\\d{1,2})/);if(m&&el.children.length===0)timeTxt=m[0];});",
+"  if(timeTxt)lines.push('【疑似发布时间】'+timeTxt);",
+"  lines.push('');lines.push('【页面里出现的网址】');urls.forEach(function(u){lines.push(u);});",
+"  var box=document.getElementById('__grabBox');if(box)box.parentNode.removeChild(box);",
+"  box=document.createElement('div');box.id='__grabBox';",
+"  box.style.cssText='position:fixed;right:14px;top:14px;width:400px;max-height:82vh;overflow:auto;background:#fff;color:#111;border:2px solid #e0533a;box-shadow:0 6px 24px rgba(0,0,0,.35);z-index:2147483647;font:13px/1.55 -apple-system,sans-serif;padding:14px;border-radius:10px';",
+"  box.innerHTML='<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px\"><b style=\"color:#e0533a\">已解锁复制 · 抓取结果</b><span id=\"__grabX\" style=\"cursor:pointer;color:#888;font-size:18px;line-height:1\">×</span></div><button id=\"__grabCopy\" style=\"width:100%;padding:9px;background:#e0533a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;margin-bottom:10px\">一键复制全部</button><pre id=\"__grabTxt\" style=\"white-space:pre-wrap;word-break:break-all;margin:0\"></pre>';",
+"  document.body.appendChild(box);",
+"  document.getElementById('__grabTxt').textContent=lines.join('\\n');",
+"  document.getElementById('__grabX').onclick=function(){box.parentNode.removeChild(box);};",
+"  document.getElementById('__grabCopy').onclick=function(){var s=lines.join('\\n');if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(s).then(function(){alert('已复制，去微信/百度粘贴即可');});}else{var ta=document.createElement('textarea');ta.value=s;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);alert('已复制');}};",
+"})();"
+].join("\n");
+document.getElementById('bm').href = 'javascript:(function(){' + encodeURIComponent(code) + '})()';
+</script>
+</body>
+</html>
