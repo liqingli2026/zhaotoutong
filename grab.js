@@ -25,29 +25,39 @@
   });
   urls = urls.slice(0, 40);
 
+  function isNoiseUrl(u){
+    if(!u) return true;
+    if(/^about:(blank|srcdoc)/i.test(u)) return true;
+    if(/\/(footer|header|copyright|bottom|top|nav|sidebar|menu|banner)(\?.*)?$/i.test(u)) return true;
+    if(/^javascript:/i.test(u)) return true;
+    if(/^data:/i.test(u)) return true;
+    return false;
+  }
+
   function deepScan(){
     var out = [];
     Array.prototype.forEach.call(document.querySelectorAll('iframe[src],embed[src],object[data],frame[src]'), function(el){
-      var h = el.src || el.data || ''; if(h) out.push(h);
+      var h = el.src || el.data || ''; if(!isNoiseUrl(h)) out.push(h);
     });
     var keys = ['pdfUrl','pdfURL','fileUrl','fileURL','bulletinFileUrl','downloadUrl','downloadURL','attachmentUrl','filePath','pdfPath','src'];
     keys.forEach(function(k){
-      try { if(window[k] && typeof window[k]==='string' && /^https?:/.test(window[k])) out.push(window[k]); }catch(e){}
+      try { var v = window[k]; if(v && typeof v==='string' && /^https?:/.test(v) && !isNoiseUrl(v) && out.indexOf(v)<0) out.push(v); }catch(e){}
     });
     Array.prototype.forEach.call(document.querySelectorAll('*'), function(el){
       ['data-src','data-url','data-pdf','data-file','data-path','data-original','ng-src','pdf-src','file-src'].forEach(function(k){
-        var v = el.getAttribute(k); if(v && /^https?:/.test(v)) out.push(v);
+        var v = el.getAttribute(k); if(v && /^https?:/.test(v) && !isNoiseUrl(v) && out.indexOf(v)<0) out.push(v);
       });
     });
     var html = document.documentElement.innerHTML;
     var m = html.match(/https?:\/\/[^\s\"<>]+/g);
-    if(m) m.forEach(function(u){ if(/\.(pdf|doc|docx|xls|xlsx)($|[?#])/i.test(u) && out.indexOf(u)<0) out.push(u); });
+    if(m) m.forEach(function(u){ if(!isNoiseUrl(u) && /\.(pdf|doc|docx|xls|xlsx)($|[?#])/i.test(u) && out.indexOf(u)<0) out.push(u); });
     var host = location.hostname;
     if(/ctbpsp\.com|cebpubservice\.com/i.test(host)){
       var mu = location.href.match(/[?&]uuid=([^&#]+)/);
       if(mu){
         var uid = decodeURIComponent(mu[1]);
-        out.push('https://bulletin.cebpubservice.com/bulletin/' + uid);
+        var apiUrl = 'https://bulletin.cebpubservice.com/bulletin/' + uid;
+        if(out.indexOf(apiUrl)<0) out.push(apiUrl);
       }
     }
     return out;
