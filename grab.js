@@ -108,7 +108,45 @@
     });
   }
 
-  function extractViewerText(viewerUrl, onDone, onErr){
+  function ocrPages(pdf, onProgress){
+    return new Promise(function(resolve, reject){
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js';
+      var done = false;
+      s.onload = function(){
+        if(done) return; done = true;
+        try {
+          var worker = Tesseract.createWorker();
+          worker.load()
+            .then(function(){ return worker.loadLanguage('chi_sim+eng'); })
+            .then(function(){ return worker.initialize('chi_sim+eng'); })
+            .then(function(){
+              var texts = [];
+              (function rec(i){
+                if(i > pdf.numPages){ try { worker.terminate(); } catch(e){} resolve(texts.join('\n\n')); return; }
+                pdf.getPage(i).then(function(page){
+                  var vp = page.getViewport({ scale: 2 });
+                  var canvas = document.createElement('canvas');
+                  canvas.width = vp.width; canvas.height = vp.height;
+                  var ctx = canvas.getContext('2d');
+                  page.render({ canvasContext: ctx, viewport: vp }).promise.then(function(){
+                    if(onProgress) onProgress('正在 OCR 第 ' + i + '/' + pdf.numPages + ' 页…');
+                    worker.recognize(canvas).then(function(res){
+                      texts.push('【第' + i + '页】\n' + (res.data.text || ''));
+                      rec(i + 1);
+                    }).catch(function(e){ reject(e); });
+                  }).catch(function(e){ reject(e); });
+                }).catch(function(e){ reject(e); });
+              })(1);
+            }).catch(function(e){ reject(e); });
+        } catch(e){ reject(e); }
+      };
+      s.onerror = function(){ reject(new Error('OCR 库加载失败（需联网）')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function extractViewerText(viewerUrl, onDone, onErr, onProgress){
     var existing = null;
     Array.prototype.forEach.call(document.querySelectorAll('iframe,embed,object'), function(el){
       var s = el.src || el.data || '';
@@ -138,16 +176,29 @@
             return pdf.getPage(pi).then(function(page){
               return page.getTextContent().then(function(tc){
                 var strs = [];
-                tc.items.forEach(function(it){ strs.push(it.str); if(it.hasEOL) strs.push('\n'); });
+                tc.items.forEach(function(it){ strs.push(it.str || ''); if(it.hasEOL) strs.push('\n'); });
                 return {n: page.pageNumber, t: strs.join('')};
               });
             });
           })).then(function(results){
             results.sort(function(a,b){ return a.n - b.n; });
             var full = [];
-            results.forEach(function(r){ full.push('【第' + r.n + '页】\n' + r.t); });
-            onDone(full.join('\n\n'));
-            if(!existing) try { document.body.removeChild(iframe); } catch(e){}
+            var totalLen = 0;
+            results.forEach(function(r){ full.push('【第' + r.n + '页】\n' + r.t); totalLen += (r.t || '').length; });
+            var text = full.join('\n\n');
+            if(totalLen < 30 && pdf.numPages > 0){
+              if(onProgress) onProgress('未检测到文字层，疑似扫描件，正在 OCR 识别（需联网，请稍候）…');
+              ocrPages(pdf, onProgress).then(function(ocrText){
+                onDone(ocrText || text);
+                if(!existing) try { document.body.removeChild(iframe); } catch(e){}
+              }).catch(function(){
+                onDone(text);
+                if(!existing) try { document.body.removeChild(iframe); } catch(e){}
+              });
+            } else {
+              onDone(text);
+              if(!existing) try { document.body.removeChild(iframe); } catch(e){}
+            }
           }).catch(function(e){ onErr(e.message || '提取失败'); });
           return;
         }
@@ -202,6 +253,8 @@
           };
         }, function(err){
           resBox.innerHTML = '<div style="color:#c0392b;font-size:13px">提取失败：' + err + '<br>可点「打开查看器」手动用文本选择工具复制。</div>';
+        }, function(msg){
+          resBox.innerHTML = '<div style="color:#e0533a;font-size:13px">' + msg + '</div>';
         });
       };
     });
