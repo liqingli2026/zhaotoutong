@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF 文字提取 · 招投通</title>
+<style>
+  body{margin:0;font:14px/1.6 -apple-system,"Microsoft YaHei",sans-serif;color:#222;background:#f5f5f5}
+  header{position:sticky;top:0;background:#e0533a;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;z-index:10}
+  header b{font-size:15px}
+  header .url{font-size:12px;opacity:.92;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  button{padding:7px 12px;border:none;border-radius:6px;cursor:pointer;font-size:13px}
+  .btn-copy{background:#fff;color:#e0533a;font-weight:bold}
+  .btn-dl{background:#fff;color:#333}
+  #status{font-size:12px;opacity:.95}
+  main{max-width:920px;margin:14px auto;background:#fff;padding:14px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+  #canvasWrap{text-align:center}
+  canvas{max-width:100%;height:auto;border:1px solid #eee}
+  #textWrap{margin-top:16px}
+  #textWrap h3{margin:0 0 6px;font-size:14px;color:#e0533a}
+  #allText{width:100%;height:340px;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:10px;font:13px/1.6 "Microsoft YaHei",monospace;resize:vertical;white-space:pre-wrap;word-break:break-all}
+  .pg{margin:14px 0;padding-bottom:12px;border-bottom:1px dashed #eee}
+  .pg-no{font-size:12px;color:#999;margin-bottom:6px}
+  .err{color:#c0392b;padding:20px;line-height:1.8}
+</style>
+</head>
+<body>
+<header>
+  <b>📄 PDF 文字提取</b>
+  <span class="url" id="urlLabel"></span>
+  <span id="status">准备中…</span>
+  <button class="btn-copy" id="copyAll">复制全部文字</button>
+  <button class="btn-dl" id="download">下载 PDF</button>
+</header>
+<main>
+  <div id="canvasWrap"></div>
+  <div id="textWrap">
+    <h3>全文文字（可直接用鼠标拖选复制）</h3>
+    <textarea id="allText" readonly placeholder="加载中…"></textarea>
+  </div>
+  <div id="pages"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function(){
+  var pdfjsLib = window.pdfjsLib;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  var params = new URLSearchParams(location.search);
+  var rawUrl = params.get('url') || '';
+  document.getElementById('urlLabel').textContent = rawUrl;
+  document.getElementById('download').onclick = function(){
+    var a = document.createElement('a'); a.href = rawUrl; a.target = '_blank'; a.rel = 'noopener'; a.click();
+  };
+  var statusEl = document.getElementById('status');
+  var allText = document.getElementById('allText');
+
+  function setStatus(t){ statusEl.textContent = t; }
+
+  function fetchData(u){
+    return fetch(u).then(function(r){
+      if(!r.ok) throw new Error('direct fail');
+      return r.arrayBuffer();
+    }).catch(function(){
+      return fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(u))
+        .then(function(r){ if(!r.ok) throw new Error('proxy fail'); return r.blob(); })
+        .then(function(b){ return b.arrayBuffer(); });
+    });
+  }
+
+  if(!rawUrl){ setStatus('缺少 url 参数'); return; }
+  setStatus('正在加载 PDF…');
+
+  fetchData(rawUrl)
+    .then(function(buf){ return pdfjsLib.getDocument({data: buf}).promise; })
+    .then(function(pdf){
+      setStatus('共 ' + pdf.numPages + ' 页，正在渲染…');
+      var full = [];
+      var scale = 1.6;
+      var tasks = [];
+      for(var i = 1; i <= pdf.numPages; i++){
+        (function(pn){
+          tasks.push(pdf.getPage(pn).then(function(page){
+            var viewport = page.getViewport({scale: scale});
+            var canvas = document.createElement('canvas');
+            canvas.width = viewport.width; canvas.height = viewport.height;
+            var ctx = canvas.getContext('2d');
+            return page.render({canvasContext: ctx, viewport: viewport}).promise.then(function(){
+              var wrap = document.createElement('div'); wrap.className = 'pg';
+              var no = document.createElement('div'); no.className = 'pg-no'; no.textContent = '— 第 ' + pn + ' 页 —';
+              wrap.appendChild(no); wrap.appendChild(canvas);
+              document.getElementById('canvasWrap').appendChild(wrap);
+              return page.getTextContent();
+            }).then(function(tc){
+              var strs = [];
+              tc.items.forEach(function(it){ strs.push(it.str); if(it.hasEOL) strs.push('\n'); });
+              full.push('【第' + pn + '页】\n' + strs.join(''));
+            });
+          }));
+        })(i);
+      }
+      return Promise.all(tasks).then(function(){
+        allText.value = full.join('\n\n');
+        setStatus('✅ 完成 ' + pdf.numPages + ' 页，可直接拖选下方文字复制');
+      });
+    })
+    .catch(function(err){
+      setStatus('加载失败：' + (err && err.message ? err.message : err));
+      var e = document.createElement('div'); e.className = 'err';
+      e.innerHTML = 'PDF 加载失败（可能跨域或链接失效）。<br>' +
+        '可点右上角「下载 PDF」用本地阅读器打开；或在原页面用浏览器 PDF 阅读器顶部的「文本选择工具」(I 形图标) 选中复制。';
+      document.getElementById('canvasWrap').appendChild(e);
+    });
+
+  document.getElementById('copyAll').onclick = function(){
+    var v = allText.value;
+    if(!v){ alert('还没有文字'); return; }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(v).then(function(){ alert('已复制全部文字'); });
+    } else {
+      allText.removeAttribute('readonly'); allText.select(); document.execCommand('copy'); allText.setAttribute('readonly', ''); alert('已复制');
+    }
+  };
+})();
+</script>
+</body>
+</html>
