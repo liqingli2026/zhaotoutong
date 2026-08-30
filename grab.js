@@ -25,6 +25,34 @@
   });
   urls = urls.slice(0, 40);
 
+  function deepScan(){
+    var out = [];
+    Array.prototype.forEach.call(document.querySelectorAll('iframe[src],embed[src],object[data],frame[src]'), function(el){
+      var h = el.src || el.data || ''; if(h) out.push(h);
+    });
+    var keys = ['pdfUrl','pdfURL','fileUrl','fileURL','bulletinFileUrl','downloadUrl','downloadURL','attachmentUrl','filePath','pdfPath','src'];
+    keys.forEach(function(k){
+      try { if(window[k] && typeof window[k]==='string' && /^https?:/.test(window[k])) out.push(window[k]); }catch(e){}
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('*'), function(el){
+      ['data-src','data-url','data-pdf','data-file','data-path','data-original','ng-src','pdf-src','file-src'].forEach(function(k){
+        var v = el.getAttribute(k); if(v && /^https?:/.test(v)) out.push(v);
+      });
+    });
+    var html = document.documentElement.innerHTML;
+    var m = html.match(/https?:\/\/[^\s\"<>]+/g);
+    if(m) m.forEach(function(u){ if(/\.(pdf|doc|docx|xls|xlsx)($|[?#])/i.test(u) && out.indexOf(u)<0) out.push(u); });
+    var host = location.hostname;
+    if(/ctbpsp\.com|cebpubservice\.com/i.test(host)){
+      var mu = location.href.match(/[?&]uuid=([^&#]+)/);
+      if(mu){
+        var uid = decodeURIComponent(mu[1]);
+        out.push('https://bulletin.cebpubservice.com/bulletin/' + uid);
+      }
+    }
+    return out;
+  }
+
   var lines = [];
   lines.push('【网页标题】' + document.title);
   lines.push('【当前网址】' + location.href);
@@ -54,6 +82,7 @@
     + '<b style="color:#e0533a">已解锁复制 · 抓取结果</b>'
     + '<span id="__grabX" style="cursor:pointer;color:#888;font-size:18px;line-height:1">×</span></div>'
     + '<button id="__grabCopy" style="width:100%;padding:9px;background:#e0533a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;margin-bottom:10px">一键复制全部</button>'
+    + '<button id="__grabDeep" style="width:100%;padding:9px;background:#fff;color:#e0533a;border:2px solid #e0533a;border-radius:6px;cursor:pointer;font-size:14px;margin-bottom:10px">🔍 深度扫描 PDF 来源</button>'
     + '<pre id="__grabTxt" style="white-space:pre-wrap;word-break:break-all;margin:0"></pre>'
     + '<div id="__grabPdfs" style="margin-top:10px"></div>';
   document.body.appendChild(box);
@@ -80,6 +109,23 @@
   }
 
   document.getElementById('__grabX').onclick = function(){ box.parentNode.removeChild(box); };
+  document.getElementById('__grabDeep').onclick = function(){
+    var candidates = deepScan();
+    var deepBox = document.getElementById('__grabDeepBox');
+    if(!deepBox){
+      deepBox = document.createElement('div'); deepBox.id = '__grabDeepBox'; deepBox.style.marginTop = '12px';
+      pdfBox.parentNode.insertBefore(deepBox, pdfBox.nextSibling);
+    }
+    if(!candidates.length){
+      deepBox.innerHTML = '<b style="color:#888">🔍 深度扫描结果</b><div style="color:#999;font-size:12px;margin-top:6px">没扫到可疑 PDF 链接。<br>如果页面有下载按钮，点下载后复制新标签页的 PDF 地址，手动贴到：<br><a href="https://zhaotoutong.chzfd.com/pdf.html" target="_blank" rel="noopener">https://zhaotoutong.chzfd.com/pdf.html</a></div>';
+      return;
+    }
+    var html = '<b style="color:#e0533a">🔍 深度扫描结果</b><div style="color:#666;font-size:12px;margin:4px 0 6px">以下是从 iframe / data-* / 脚本里扫到的可疑链接，点「提取文字」试试：</div>';
+    candidates.forEach(function(u){
+      html += '<div style="margin-top:8px"><a href="https://zhaotoutong.chzfd.com/pdf.html?url=' + encodeURIComponent(u) + '" target="_blank" rel="noopener" style="display:inline-block;padding:7px 10px;background:#e0533a;color:#fff;border-radius:6px;text-decoration:none;font-size:13px">📄 提取文字</a><a href="' + u.replace(/"/g,'&quot;') + '" target="_blank" rel="noopener" style="display:inline-block;margin-left:6px;padding:7px 10px;background:#f0f0f0;color:#333;border-radius:6px;text-decoration:none;font-size:13px">直接打开</a><div style="color:#999;font-size:11px;word-break:break-all;margin-top:2px">' + u + '</div></div>';
+    });
+    deepBox.innerHTML = html;
+  };
   document.getElementById('__grabCopy').onclick = function(){
     var s = lines.join('\n');
     if(navigator.clipboard && navigator.clipboard.writeText){
