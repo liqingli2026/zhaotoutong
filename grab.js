@@ -76,7 +76,7 @@
   if(box) box.parentNode.removeChild(box);
   box = document.createElement('div');
   box.id = '__grabBox';
-  box.style.cssText = 'position:fixed;right:14px;top:14px;width:420px;max-height:84vh;overflow:auto;background:#fff;color:#111;border:2px solid #e0533a;box-shadow:0 6px 24px rgba(0,0,0,.35);z-index:2147483647;font:13px/1.55 -apple-system,sans-serif;padding:14px;border-radius:10px';
+  box.style.cssText = 'position:fixed;right:14px;top:14px;width:520px;max-height:90vh;overflow:auto;background:#fff;color:#111;border:2px solid #e0533a;box-shadow:0 6px 24px rgba(0,0,0,.35);z-index:2147483647;font:13px/1.55 -apple-system,sans-serif;padding:14px;border-radius:10px';
   box.innerHTML = ''
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
     + '<b style="color:#e0533a">已解锁复制 · 抓取结果</b>'
@@ -264,7 +264,7 @@
       extractViewerText(vu, function(text, meta){
         var label = (meta && meta.source === 'ocr') ? 'OCR 识别成功' : '提取成功';
         var diag = (meta && typeof meta.rawPrint === 'number') ? '<span style="color:#888;font-size:12px">（文字层有效字符 ' + meta.rawPrint + ' 个）</span>' : '';
-        resBox.innerHTML = '<div style="margin-bottom:6px"><b style="color:#e0533a">' + label + '</b> ' + diag + ' <button id="__grabCpTxt" style="padding:4px 10px;background:#e0533a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">复制全部</button></div><textarea id="__grabResTa" style="width:100%;height:220px;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:13px;white-space:pre-wrap;word-break:break-all">' + text.replace(/</g,'&lt;').replace(/&/g,'&amp;') + '</textarea>';
+        resBox.innerHTML = '<div style="margin-bottom:6px"><b style="color:#e0533a">' + label + '</b> ' + diag + ' <button id="__grabCpTxt" style="padding:4px 10px;background:#e0533a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">复制全部</button></div><textarea id="__grabResTa" style="width:100%;height:62vh;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-all">' + text.replace(/</g,'&lt;').replace(/&/g,'&amp;') + '</textarea>';
         document.getElementById('__grabCpTxt').onclick = function(){
           var ta = document.getElementById('__grabResTa');
           if(navigator.clipboard && navigator.clipboard.writeText){
