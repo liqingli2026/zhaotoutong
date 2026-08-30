@@ -146,7 +146,12 @@
     });
   }
 
-  function extractViewerText(viewerUrl, onDone, onErr, onProgress){
+  function printableLen(s){
+    if(!s) return 0;
+    return (s.match(/[\u4e00-\u9fa5a-zA-Z0-9]/g) || []).length;
+  }
+
+  function extractViewerText(viewerUrl, onDone, onErr, onProgress, forceOcr){
     var existing = null;
     Array.prototype.forEach.call(document.querySelectorAll('iframe,embed,object'), function(el){
       var s = el.src || el.data || '';
@@ -183,20 +188,20 @@
           })).then(function(results){
             results.sort(function(a,b){ return a.n - b.n; });
             var full = [];
-            var totalLen = 0;
-            results.forEach(function(r){ full.push('【第' + r.n + '页】\n' + r.t); totalLen += (r.t || '').length; });
+            var totalPrint = 0;
+            results.forEach(function(r){ full.push('【第' + r.n + '页】\n' + r.t); totalPrint += printableLen(r.t); });
             var text = full.join('\n\n');
-            if(totalLen < 30 && pdf.numPages > 0){
-              if(onProgress) onProgress('未检测到文字层，疑似扫描件，正在 OCR 识别（需联网，请稍候）…');
+            if(forceOcr || (totalPrint < 20 && pdf.numPages > 0)){
+              if(onProgress) onProgress('文字层有效字符 ' + totalPrint + ' 个，疑似扫描件，正在 OCR 识别（需联网，请稍候）…');
               ocrPages(pdf, onProgress).then(function(ocrText){
-                onDone(ocrText || text);
+                onDone(ocrText || text, { source: 'ocr', rawPrint: totalPrint });
                 if(!existing) try { document.body.removeChild(iframe); } catch(e){}
-              }).catch(function(){
-                onDone(text);
+              }).catch(function(e){
+                onDone(text + '\n\n【OCR 失败：' + (e.message || e) + '】', { source: 'text', rawPrint: totalPrint });
                 if(!existing) try { document.body.removeChild(iframe); } catch(e){}
               });
             } else {
-              onDone(text);
+              onDone(text, { source: 'text', rawPrint: totalPrint });
               if(!existing) try { document.body.removeChild(iframe); } catch(e){}
             }
           }).catch(function(e){ onErr(e.message || '提取失败'); });
@@ -241,23 +246,39 @@
         var vu = btn.getAttribute('data-vu');
         var resBox = document.getElementById('__grabViewRes');
         resBox.innerHTML = '<div style="color:#e0533a;font-size:13px">正在后台加载 PDF 并提取文字，请稍候…</div>';
-        extractViewerText(vu, function(text){
-          resBox.innerHTML = '<div style="margin-bottom:6px"><b style="color:#e0533a">提取成功</b> <button id="__grabCpTxt" style="padding:4px 10px;background:#e0533a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">复制全部</button></div><textarea id="__grabResTa" style="width:100%;height:220px;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:13px;white-space:pre-wrap;word-break:break-all">' + text.replace(/</g,'&lt;').replace(/&/g,'&amp;') + '</textarea>';
-          document.getElementById('__grabCpTxt').onclick = function(){
-            var ta = document.getElementById('__grabResTa');
-            if(navigator.clipboard && navigator.clipboard.writeText){
-              navigator.clipboard.writeText(ta.value).then(function(){ alert('已复制'); });
-            } else {
-              ta.select(); document.execCommand('copy'); alert('已复制');
-            }
-          };
-        }, function(err){
-          resBox.innerHTML = '<div style="color:#c0392b;font-size:13px">提取失败：' + err + '<br>可点「打开查看器」手动用文本选择工具复制。</div>';
-        }, function(msg){
-          resBox.innerHTML = '<div style="color:#e0533a;font-size:13px">' + msg + '</div>';
-        });
+        runExtract(vu, false);
       };
+      var ocrBtn = document.createElement('button');
+      ocrBtn.textContent = '🖼 扫描件 OCR 识别';
+      ocrBtn.style.cssText = 'padding:7px 10px;background:#fff;color:#e0533a;border:2px solid #e0533a;border-radius:6px;cursor:pointer;font-size:13px;margin-left:6px';
+      ocrBtn.onclick = function(){
+        var vu = btn.getAttribute('data-vu');
+        var resBox = document.getElementById('__grabViewRes');
+        resBox.innerHTML = '<div style="color:#e0533a;font-size:13px">正在强制 OCR，请稍候…</div>';
+        runExtract(vu, true);
+      };
+      btn.parentNode.insertBefore(ocrBtn, btn.nextSibling);
     });
+    function runExtract(vu, forceOcr){
+      var resBox = document.getElementById('__grabViewRes');
+      extractViewerText(vu, function(text, meta){
+        var label = (meta && meta.source === 'ocr') ? 'OCR 识别成功' : '提取成功';
+        var diag = (meta && typeof meta.rawPrint === 'number') ? '<span style="color:#888;font-size:12px">（文字层有效字符 ' + meta.rawPrint + ' 个）</span>' : '';
+        resBox.innerHTML = '<div style="margin-bottom:6px"><b style="color:#e0533a">' + label + '</b> ' + diag + ' <button id="__grabCpTxt" style="padding:4px 10px;background:#e0533a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">复制全部</button></div><textarea id="__grabResTa" style="width:100%;height:220px;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:13px;white-space:pre-wrap;word-break:break-all">' + text.replace(/</g,'&lt;').replace(/&/g,'&amp;') + '</textarea>';
+        document.getElementById('__grabCpTxt').onclick = function(){
+          var ta = document.getElementById('__grabResTa');
+          if(navigator.clipboard && navigator.clipboard.writeText){
+            navigator.clipboard.writeText(ta.value).then(function(){ alert('已复制'); });
+          } else {
+            ta.select(); document.execCommand('copy'); alert('已复制');
+          }
+        };
+      }, function(err){
+        resBox.innerHTML = '<div style="color:#c0392b;font-size:13px">提取失败：' + err + '<br>可点「打开查看器」手动用文本选择工具复制。</div>';
+      }, function(msg){
+        resBox.innerHTML = '<div style="color:#e0533a;font-size:13px">' + msg + '</div>';
+      }, forceOcr);
+    }
   };
   document.getElementById('__grabCopy').onclick = function(){
     var s = lines.join('\n');
