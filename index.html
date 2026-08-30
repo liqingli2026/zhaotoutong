@@ -7,8 +7,8 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <title>招投通</title>
-    <script type="module" crossorigin src="./assets/index-DjDnWgFY.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DPnU6ois.css">
+    <script type="module" crossorigin src="./assets/index-D-986pAF.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DX-7LP7Z.css">
   </head>
   <body>
     <div id="app">
@@ -23,6 +23,9 @@
         </button>
         <button id="noBidBtn" class="nobid-btn" type="button" aria-pressed="false">
           <span class="sl-btn-icon">✕</span>不可投 <span id="noBidCount" class="sl-badge nobadge">0</span>
+        </button>
+        <button id="grabHelperBtn" class="grabhelper-btn" type="button" title="抓取禁复制的招标网页">
+          <span class="sl-btn-icon">📋</span>抓取助手
         </button>
       </header>
 
@@ -80,6 +83,24 @@
       </div>
 
       <div id="toast" class="toast" aria-live="polite"></div>
+
+      <div id="grabHelperOverlay" class="grab-overlay"></div>
+      <div id="grabHelperModal" class="grab-modal" aria-hidden="true">
+        <div class="grab-head">
+          <span class="grab-head-title">抓取助手</span>
+          <button id="grabHelperClose" class="grab-close" type="button" aria-label="关闭">×</button>
+        </div>
+        <div class="grab-body">
+          <p class="grab-tip">遇到<strong>禁复制</strong>的招标页（北地、安徽交易、中铁鲁班等），把下面按钮拖到书签栏。以后在那种页面点一下书签，即可解锁复制并提取标题/网址/时间，一键复制到微信去查。</p>
+          <a id="grabBookmarklet" class="grab-drag" href="#">📋 抓取招标信息（拖我到书签栏）</a>
+          <ol class="grab-steps">
+            <li>把上面橙色按钮<strong>拖到书签栏</strong>（地址栏下方）。看不到书签栏按 <code>Ctrl+Shift+B</code>。</li>
+            <li>拖不动？按钮上<strong>右键→复制链接地址</strong>，再书签栏空白处<strong>右键→添加网页</strong>粘贴进去。</li>
+            <li>以后在禁复制的招标页点一下该书签即可。</li>
+          </ol>
+          <p class="grab-note">此工具仅在你的浏览器本地运行，不收集、不上传任何数据。</p>
+        </div>
+      </div>
     </div>
   </body>
 </html>
