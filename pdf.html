@@ -49,6 +49,15 @@
 
   var params = new URLSearchParams(location.search);
   var rawUrl = params.get('url') || '';
+  if(rawUrl && (rawUrl.indexOf('/web/viewer.html') !== -1 || rawUrl.indexOf('/pdfjs') !== -1)){
+    var vq = rawUrl.split('?')[1] || '';
+    var viewerParams = new URLSearchParams(vq);
+    var fileParam = viewerParams.get('file');
+    if(fileParam){
+      try { fileParam = decodeURIComponent(fileParam); } catch(e){}
+      rawUrl = fileParam;
+    }
+  }
   document.getElementById('urlLabel').textContent = rawUrl;
   document.getElementById('download').onclick = function(){
     var a = document.createElement('a'); a.href = rawUrl; a.target = '_blank'; a.rel = 'noopener'; a.click();
