@@ -7,8 +7,8 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <title>招投通</title>
-    <script type="module" crossorigin src="./assets/index-Cfu2G3xm.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DX-7LP7Z.css">
+    <script type="module" crossorigin src="./assets/index-CVbHZJUV.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Cs4iNfyt.css">
   </head>
   <body>
     <div id="app">
@@ -26,6 +26,9 @@
         </button>
         <button id="grabHelperBtn" class="grabhelper-btn" type="button" title="抓取禁复制的招标网页">
           <span class="sl-btn-icon">📋</span>抓取助手
+        </button>
+        <button id="collectBtn" class="collect-btn" type="button" title="立即采集新招标（需本机运行采集工具）">
+          <span class="sl-btn-icon">⟳</span>采集
         </button>
       </header>
 
@@ -99,6 +102,25 @@
             <li>以后在禁复制的招标页点一下该书签即可。</li>
           </ol>
           <p class="grab-note">此工具仅在你的浏览器本地运行，不收集、不上传任何数据。</p>
+        </div>
+      </div>
+
+      <div id="collectOverlay" class="collect-overlay"></div>
+      <div id="collectModal" class="collect-modal" aria-hidden="true">
+        <div class="collect-head">
+          <span class="collect-head-title">采集新招标</span>
+          <button id="collectClose" class="collect-close" type="button" aria-label="关闭">×</button>
+        </div>
+        <div class="collect-body">
+          <label class="collect-opt">
+            <input type="checkbox" id="collectQixin" /> 同时补充启信慧眼数据
+          </label>
+          <div class="collect-actions">
+            <button id="collectStart" class="collect-start" type="button">立即采集</button>
+            <button id="collectStop" class="collect-stop" type="button" disabled>停止</button>
+          </div>
+          <div id="collectLog" class="collect-log"></div>
+          <div id="collectStatus" class="collect-status"></div>
         </div>
       </div>
     </div>
